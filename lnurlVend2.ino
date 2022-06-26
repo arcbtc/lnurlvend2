@@ -39,10 +39,6 @@ String invoice;
 String baseURLvend;
 String secretvend;
 String currencyvend;
-String baseURLATM;
-String secretATM;
-String currencyATM;
-String lnurlATMMS;
 String dataIn = "0";
 String amountToShow = "0.00";
 String noSats = "0";
@@ -50,14 +46,16 @@ String qrData;
 String dataId;
 String addressNo;
 String pinToShow;
-char menuItems[4][12] = {"LNvend", "LNURLvend", "OnChain", "LNURLATM"};
-int menuItemCheck[4] = {0, 0, 0, 0};
+const char lnurlVendProdNames[12][20] = {"", "", "", "", "", "", "", "", "", "", "", ""};
+const char lnurlVendProdAmounts[12][20] = {"", "", "", "", "", "", "", "", "", "", "", ""};
+const char lnurlVendProdPins[12][20] = {"", "", "", "", "", "", "", "", "", "", "", ""};
 String selection;
 int menuItemNo = 0;
 int randomPin;
 int calNum = 1;
 int sumFlag = 0;
 int converted = 0;
+int lnurlVendTime = 0;
 String key_val;
 bool onchainCheck = false;
 bool lnCheck = false;
@@ -65,13 +63,7 @@ bool lnurlCheck = false;
 bool unConfirmed = true;
 bool selected = false;
 bool lnurlCheckvend = false;
-bool lnurlCheckATM = false;
-String lnurlVendProdOne;
-String lnurlVendProdOneAmount;
-String lnurlVendProdTwo;
-String lnurlVendProdTwoAmount;
-String lnurlVendProdThree;
-String lnurlVendProdThreeAmount;
+
 
 //Custom access point pages
 static const char PAGE_ELEMENTS[] PROGMEM = R"(
@@ -93,24 +85,82 @@ static const char PAGE_ELEMENTS[] PROGMEM = R"(
       "value": "ToTheMoon1"
     },
     {
-      "name": "lnurlvend",
+      "name": "lnurlvendpos",
       "type": "ACInput",
-      "label": "LNURLvend String"
+      "label": "LNURLPoS string from LNbits extension"
+    },
+    {
+      "name": "lnurlvendmotortime",
+      "type": "ACInput",
+      "label": "Motor time millisecs"
+      "vale": "2000"
+    },
+    {
+      "name": "text",
+      "type": "ACText",
+      "value": "Products, format <prod-name>,<prod-amount>,<prod-pin>",
+      "style": "font-family:Arial;font-size:16px;font-weight:400;color:#191970;margin-botom:15px;"
     },
     {
       "name": "lnurlvendprodone",
       "type": "ACInput",
-      "label": "Product One String"
+      "label": "Product One",
+      "value": "Gum,10,02"
     },
-    {
+     {
       "name": "lnurlvendprodtwo",
       "type": "ACInput",
-      "label": "Product Two String"
+      "label": "Product Two"
     },
-    {
-      "name": "lnurlvendprobthree",
+     {
+      "name": "lnurlvendprodthree",
       "type": "ACInput",
-      "label": "Product Three String"
+      "label": "Product Three"
+    },
+     {
+      "name": "lnurlvendprodfour",
+      "type": "ACInput",
+      "label": "Product Four"
+    },
+     {
+      "name": "lnurlvendprodfive",
+      "type": "ACInput",
+      "label": "Product Five"
+    },
+     {
+      "name": "lnurlvendprodsix",
+      "type": "ACInput",
+      "label": "Product Six"
+    },
+     {
+      "name": "lnurlvendprodseven",
+      "type": "ACInput",
+      "label": "Product Seven"
+    },
+     {
+      "name": "lnurlvendprodeight",
+      "type": "ACInput",
+      "label": "Product Eight"
+    },
+     {
+      "name": "lnurlvendprodnine",
+      "type": "ACInput",
+      "label": "Product Nine"
+    },
+     {
+      "name": "lnurlvendprodten",
+      "type": "ACInput",
+      "label": "Product Ten"
+    },
+     {
+      "name": "lnurlvendprodeleven",
+      "type": "ACInput",
+      "label": "Product Eleven"
+    },
+     {
+      "name": "lnurlvendprodtwelve",
+      "type": "ACInput",
+      "label": "Product Twelve"
     },
     {
       "name": "load",
@@ -197,7 +247,6 @@ void setup()
   tft.init();
   tft.invertDisplay(false);
   tft.setRotation(1);
-  logo();
 
   //Load buttons
   h.begin();
@@ -216,38 +265,132 @@ void setup()
     StaticJsonDocument<2500> doc;
     DeserializationError error = deserializeJson(doc, paramFile.readString());
 
-    JsonObject passRoot = doc[0];
-    const char *apPasswordChar = passRoot["value"];
-    const char *apNameChar = passRoot["name"];
+    JsonObject lnurlVPass = doc[0];
+    const char *apPasswordChar = lnurlVPass["value"];
+    const char *apNameChar = lnurlVPass["name"];
     if (String(apPasswordChar) != "" && String(apNameChar) == "password")
     {
       apPassword = apPasswordChar;
     }
 
-    JsonObject lnurlvendRoot = doc[1];
-    const char *lnurlvendChar = lnurlvendRoot["value"];
+    JsonObject lnurlVRoot = doc[1];
+    const char *lnurlvendChar = lnurlVRoot["value"];
     String lnurlvend = lnurlvendChar;
     baseURLvend = getValue(lnurlvend, ',', 0);
     secretvend = getValue(lnurlvend, ',', 1);
     currencyvend = getValue(lnurlvend, ',', 2);
 
-    JsonObject lnurlvendRoot = doc[2];
-    const char *lnurlVendProdOneChar = lnurlvendRoot["value"];
-    String lnurlVendProdOneStr = lnurlVendProdOneChar;
-    lnurlVendProdOne = getValue(lnurlVendProdOneStr, ',', 0);
-    lnurlVendProdOneAmount = getValue(lnurlVendProdOneStr, ',', 1);
+    JsonObject lnurlVTime = doc[2];
+    const char *lnurlvendChar = lnurlVTime["value"];
+    lnurlVendTime = int(lnurlvendChar);
+    
+    if(doc[3] != ""){
+      JsonObject lnurlVOne = doc[3];
+      const char *lnurlVendProdOneChar = lnurlVOne["value"];
+      String lnurlVendProdOneStr = lnurlVendProdOneChar;
+      lnurlVendProdNames[0] = getValue(lnurlVendProdOneStr, ',', 0);
+      lnurlVendProdAmounts[0] = getValue(lnurlVendProdOneStr, ',', 1);
+      lnurlVendProdPins[0] = getValue(lnurlVendProdOneStr, ',', 2);
+    }
 
-    JsonObject lnurlvendRoot = doc[2];
-    const char *lnurlVendProdTwoChar = lnurlvendRoot["value"];
-    String lnurlVendProdTwoStr = lnurlVendProdTwoChar;
-    lnurlVendProdTwo = getValue(lnurlVendProdTwoStr, ',', 0);
-    lnurlVendProdTwoAmount = getValue(lnurlVendProdTwoStr, ',', 1);
+    if(doc[4] != ""){
+      JsonObject lnurlVTwo = doc[4];
+      const char *lnurlVendProdTwoChar = lnurlVTwo["value"];
+      String lnurlVendProdTwoStr = lnurlVendProdTwoChar;
+      lnurlVendProdNames[1] = getValue(lnurlVendProdTwoStr, ',', 0);
+      lnurlVendProdAmounts[1] = getValue(lnurlVendProdTwoStr, ',', 1);
+      lnurlVendProdPins[1] = getValue(lnurlVendProdTwoStr, ',', 2);
+    }
 
-    JsonObject lnurlvendRoot = doc[2];
-    const char *lnurlVendProdThreeChar = lnurlvendRoot["value"];
-    String lnurlVendProdThreeStr = lnurlVendProdThreeChar;
-    lnurlVendProdThree = getValue(lnurlVendProdThreeStr, ',', 0);
-    lnurlVendProdThreeAmount = getValue(lnurlVendProdThreeStr, ',', 1);
+    if(doc[5] != ""){
+      JsonObject lnurlVThree = doc[5];
+      const char *lnurlVendProdThreeChar = lnurlVThree["value"];
+      String lnurlVendProdThreeStr = lnurlVendProdThreeChar;
+      lnurlVendProdNames[2] = getValue(lnurlVendProdThreeStr, ',', 0);
+      lnurlVendProdAmounts[2] = getValue(lnurlVendProdThreeStr, ',', 1);
+      lnurlVendProdPins[2] = getValue(lnurlVendProdThreeStr, ',', 2);
+    }
+
+    if(doc[6] != ""){
+      JsonObject lnurlVFour = doc[6];
+      const char *lnurlVendProdFourChar = lnurlVFour["value"];
+      String lnurlVendProdFourStr = lnurlVendProdFourChar;
+      lnurlVendProdNames[3] = getValue(lnurlVendProdFourStr, ',', 0);
+      lnurlVendProdAmounts[3] = getValue(lnurlVendProdFourStr, ',', 1);
+      lnurlVendProdPins[3] = getValue(lnurlVendProdFourStr, ',', 2);
+    }
+
+    if(doc[7] != ""){
+      JsonObject lnurlVFive = doc[7];
+      const char *lnurlVendProdFiveChar = lnurlVFive["value"];
+      String lnurlVendProdFiveStr = lnurlVendProdFiveChar;
+      lnurlVendProdNames[4] = getValue(lnurlVendProdFiveStr, ',', 0);
+      lnurlVendProdAmounts[4] = getValue(lnurlVendProdFiveStr, ',', 1);
+      lnurlVendProdPins[4] = getValue(lnurlVendProdFiveStr, ',', 2);
+    }
+
+    if(doc[8] != ""){
+      JsonObject lnurlVSix = doc[8];
+      const char *lnurlVendProdSixChar = lnurlVSix["value"];
+      String lnurlVendProdSixStr = lnurlVendProdSixChar;
+      lnurlVendProdNames[5] = getValue(lnurlVendProdSixStr, ',', 0);
+      lnurlVendProdAmounts[5] = getValue(lnurlVendProdSixStr, ',', 1);
+      lnurlVendProdPins[5] = getValue(lnurlVendProdSixStr, ',', 2);
+    }
+
+    if(doc[9] != ""){
+      JsonObject lnurlVSeven = doc[9];
+      const char *lnurlVendProdSevenChar = lnurlVSeven["value"];
+      String lnurlVendProdSevenStr = lnurlVendProdSevenChar;
+      lnurlVendProdNames[6] = getValue(lnurlVendProdSevenStr, ',', 0);
+      lnurlVendProdAmounts[6] = getValue(lnurlVendProdSevenStr, ',', 1);
+      lnurlVendProdPins[6] = getValue(lnurlVendProdSevenStr, ',', 2);
+    }
+
+    if(doc[10] != ""){
+      JsonObject lnurlVEight = doc[10];
+      const char *lnurlVendProdEightChar = lnurlVEight["value"];
+      String lnurlVendProdEightStr = lnurlVendProdEightChar;
+      lnurlVendProdNames[7] = getValue(lnurlVendProdEightStr, ',', 0);
+      lnurlVendProdAmounts[7] = getValue(lnurlVendProdEightStr, ',', 1);
+      lnurlVendProdPins[7] = getValue(lnurlVendProdEightStr, ',', 2);
+    }
+
+    if(doc[11] != ""){
+      JsonObject lnurlVNine = doc[11];
+      const char *lnurlVendProdNineChar = lnurlVNine["value"];
+      String lnurlVendProdNineStr = lnurlVendProdNineChar;
+      lnurlVendProdNames[8] = getValue(lnurlVendProdNineStr, ',', 0);
+      lnurlVendProdAmounts[8] = getValue(lnurlVendProdNineStr, ',', 1);
+      lnurlVendProdPins[8] = getValue(lnurlVendProdNineStr, ',', 2);
+    }
+
+    if(doc[12] != ""){     
+      JsonObject lnurlVTen = doc[12];
+      const char *lnurlVendProdTenChar = lnurlVTen["value"];
+      String lnurlVendProdTenStr = lnurlVendProdTenChar;
+      lnurlVendProdNames[9] = getValue(lnurlVendProdTenStr, ',', 0);
+      lnurlVendProdAmounts[9] = getValue(lnurlVendProdTenStr, ',', 1);
+      lnurlVendProdPins[9] = getValue(lnurlVendProdTenStr, ',', 2);
+    }
+
+    if(doc[13] != ""){
+      JsonObject lnurlVEleven = doc[13];
+      const char *lnurlVendProdElevenChar = lnurlVEleven["value"];
+      String lnurlVendProdElevenStr = lnurlVendProdElevenChar;
+      lnurlVendProdNames[10] = getValue(lnurlVendProdElevenStr, ',', 0);
+      lnurlVendProdAmounts[10] = getValue(lnurlVendProdElevenStr, ',', 1);
+      lnurlVendProdPins[10] = getValue(lnurlVendProdElevenStr, ',', 2);
+    }
+
+    if(doc[14] != ""){
+      JsonObject lnurlVTwelve = doc[14];
+      const char *lnurlVendProdTwelveChar = lnurlVTwelve["value"];
+      String lnurlVendProdTwelveStr = lnurlVendProdTwelveChar;
+      lnurlVendProdNames[11] = getValue(lnurlVendProdTwelveStr, ',', 0);
+      lnurlVendProdAmounts[11] = getValue(lnurlVendProdTwelveStr, ',', 1);
+      lnurlVendProdPins[11] = getValue(lnurlVendProdTwelveStr, ',', 2);
+    }
   }
   paramFile.close();
 
@@ -263,7 +406,7 @@ void setup()
     File param = FlashFS.open(PARAM_FILE, "r");
     if (param)
     {
-      aux.loadElement(param, {"password", "lnurlvend"});
+      aux.loadElement(param, {"password", "lnurlvend", "lnurlvendpos", "lnurlvendmotortime", "lnurlvendprodone", "lnurlvendprodtwo", "lnurlvendprodthree", "lnurlvendprodfour", "lnurlvendprodfive", "lnurlvendprodsix", "lnurlvendprodseven", "lnurlvendprodeight", "lnurlvendprodnine", "lnurlvendprodten", "lnurlvendprodeleven", "lnurlvendprodtwelve"});
       param.close();
     }
     if (portal.where() == "/vendconfig")
@@ -271,7 +414,7 @@ void setup()
       File param = FlashFS.open(PARAM_FILE, "r");
       if (param)
       {
-        aux.loadElement(param, {"password", "lnurlvend"});
+        aux.loadElement(param, {"password", "lnurlvend", "lnurlvendpos", "lnurlvendmotortime", "lnurlvendprodone", "lnurlvendprodtwo", "lnurlvendprodthree", "lnurlvendprodfour", "lnurlvendprodfive", "lnurlvendprodsix", "lnurlvendprodseven", "lnurlvendprodeight", "lnurlvendprodnine", "lnurlvendprodten", "lnurlvendprodeleven", "lnurlvendprodtwelve"});
         param.close();
       }
     }
@@ -285,7 +428,7 @@ void setup()
     if (param)
     {
       // Save as a loadable set for parameters.
-      elementsAux.saveElement(param, {"password", "lnurlvend"});
+      elementsAux.saveElement(param, {"password", "lnurlvend", "lnurlvendpos", "lnurlvendmotortime", "lnurlvendprodone", "lnurlvendprodtwo", "lnurlvendprodthree", "lnurlvendprodfour", "lnurlvendprodfive", "lnurlvendprodsix", "lnurlvendprodseven", "lnurlvendprodeight", "lnurlvendprodnine", "lnurlvendprodten", "lnurlvendprodeleven", "lnurlvendprodtwelve"});
       param.close();
       // Read the saved elements again to display.
       param = FlashFS.open(PARAM_FILE, "r");
@@ -307,7 +450,7 @@ void setup()
   config.psk = apPassword;
   config.menuItems = AC_MENUITEM_CONFIGNEW | AC_MENUITEM_OPENSSIDS | AC_MENUITEM_RESET;
   config.reconnectInterval = 1;
-  config.title = "bitcoinvend";
+  config.title = "LNURLVEND";
   int timer = 0;
 
   //Give few seconds to trigger portal
@@ -343,26 +486,28 @@ void loop() {
   unsigned long check = millis();
   bool cntr = false;
   selectProduct();
+  inputs = "";
+  int timer;
+
   while (cntr == false){
+   if(timer > 20){
+     cntr = true;
+   }
    char key = keypad.getKey();
    if (key != NO_KEY){
      virtkey = String(key);
-       if (virtkey == "1"){
-          cntr = true;
-          selection = virtkey;
-          amount = prodOneAmount * 100;
+     for (int i = 0; i < sizeof(lnurlVendProdNames); i++)
+     {
+       if (lnurlVendProdNames[i] != "")
+       {
+         if (virtkey == i){
+           cntr = true;
+           selection = virtkey;
+           amount = lnurlVendProdAmounts[i] * 100;
+         }
        }
-       else if (virtkey == "2"){
-          cntr = true;
-          selection = virtkey;
-          amount = prodTwoAmount * 100;
-       }
-       else if (virtkey == "3"){
-          cntr = true;
-          selection = virtkey;
-          amount = prodThreeAmount * 100;
-       }
-      else if (virtkey == "*"){
+     }
+     if (virtkey == "*"){
         tft.fillScreen(TFT_BLACK);
         tft.setCursor(0, 0);
         tft.setTextColor(TFT_WHITE);
@@ -371,18 +516,20 @@ void loop() {
         nosats = "";
         virtkey = "";
         cntr = true;
-      }  
-
-     }
-    if (millis()-check>30000){   
-     tft.setFreeFont(SMALLFONT);
-     tft.fillScreen(TFT_BLACK);
-     tft.setCursor(0, 55);
-     tft.setTextColor(TFT_RED, TFT_BLACK);
-     tft.print("Sleeping...");
-     delay(3000);
-     gotoSleep();
-    }
+      }
+        selection();
+   }
+   delay(200);
+   timer = timer + 2;
+  }
+  if (millis()-check>30000){   
+    tft.setFreeFont(SMALLFONT);
+    tft.fillScreen(TFT_BLACK);
+    tft.setCursor(0, 55);
+    tft.setTextColor(TFT_RED, TFT_BLACK);
+    tft.print("Sleeping...");
+    delay(3000);
+    gotoSleep();
   }
   makeLNURL();
   qrShowCode();
@@ -407,21 +554,24 @@ void loop() {
       showPin();
     }
     if(inputs.length() == 4 && inputs.toInt() == randomPin){
+      for(){
+        
+      }
       if(selection == "1"){
         digitalWrite(15, HIGH);
-        delay(2500);
+        delay(lnurlVendTime);
         digitalWrite(15, LOW);
         cntr = true;
       }
       if(selection == "2"){
         digitalWrite(2, HIGH);
-        delay(2500);
+        delay(lnurlVendTime);
         digitalWrite(2, LOW);
         cntr = true;
       }
       if(selection == "3"){
         digitalWrite(4, HIGH);
-        delay(2500);
+        delay(lnurlVendTime);
         digitalWrite(4, LOW);
         cntr = true;
       }
@@ -481,8 +631,6 @@ void wakeUpScreen(){
   digitalWrite(3, HIGH);
   tft.begin();
   tft.setRotation(1);
-  logo();
-  delay(2000);
 }
 
 void qrShowCode(){
@@ -514,33 +662,11 @@ void selectProduct()
 {
   tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.setFreeFont(SMALLFONT);
+  tft.setFreeFont(MIDFONT);
   tft.setCursor(0, 10);
-  tft.print("1: ");
+  tft.println("LNURLVEND");
   tft.setTextColor(TFT_GREEN, TFT_BLACK);
-  tft.println(lnurlVendProdOne);
-  tft.setTextColor(TFT_RED, TFT_BLACK);
-  tft.print("   " + currency);
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.println(lnurlVendProdOneAmount);
-  tft.setCursor(0, 55);
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.print("2: ");
-  tft.setTextColor(TFT_GREEN, TFT_BLACK);
-  tft.println(lnurlVendProdTwo);
-  tft.setTextColor(TFT_RED, TFT_BLACK);
-  tft.print("   " + currency);
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.println(lnurlVendProdTwoAmount);
-  tft.setCursor(0, 100);
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.print("3: ");
-  tft.setTextColor(TFT_GREEN, TFT_BLACK);
-  tft.println(lnurlVendProdThree);
-  tft.setTextColor(TFT_RED, TFT_BLACK);
-  tft.print("   " + currency);
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.println(lnurlVendProdThreeAmount);
+  tft.println("Select a product");
 }
 
 void showPin(){
@@ -558,17 +684,19 @@ void showPin(){
   virtkey = "";
 }
 
-void logo(){
+void selection(){
+  inputs += virtkey;
   tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.setFreeFont(MIDFONT);
-  tft.setCursor(20,60);
-  tft.print("LNURLVEND");
-
-  tft.setTextColor(TFT_PURPLE, TFT_BLACK);
-  tft.setFreeFont(TINYFONT);
-  tft.setCursor(20,70);
-  tft.print("Powered by LNbits");
+  tft.setFreeFont(SMALLFONT);
+  tft.setCursor(0, 40);
+  tft.println(" SELECTION");
+  tft.setCursor(22, 80);
+  tft.setTextColor(TFT_RED, TFT_BLACK); 
+  tft.setFreeFont(BIGFONT);
+  tft.println(inputs);
+  delay(100);
+  virtkey = "";
 }
 
 void gotoSleep(){ 
@@ -596,18 +724,11 @@ void makeLNURL()
     nonce[i] = random(256);
   }
   byte payload[51]; // 51 bytes is max one can get with xor-encryption
-  if (selection == "LNURLvend")
-  {
-    size_t payload_len = xor_encrypt(payload, sizeof(payload), (uint8_t *)secretvend.c_str(), secretvend.length(), nonce, sizeof(nonce), randomPin, dataIn.toInt());
-    preparedURL = baseURLvend + "?p=";
-    preparedURL += toBase64(payload, payload_len, BASE64_URLSAFE | BASE64_NOPADDING);
-  }
-  else
-  {
-    size_t payload_len = xor_encrypt(payload, sizeof(payload), (uint8_t *)secretATM.c_str(), secretATM.length(), nonce, sizeof(nonce), randomPin, dataIn.toInt());
-    preparedURL = baseURLATM + "?atm=1&p=";
-    preparedURL += toBase64(payload, payload_len, BASE64_URLSAFE | BASE64_NOPADDING);
-  }
+
+  size_t payload_len = xor_encrypt(payload, sizeof(payload), (uint8_t *)secretvend.c_str(), secretvend.length(), nonce, sizeof(nonce), randomPin, dataIn.toInt());
+  preparedURL = baseURLvend + "?p=";
+  preparedURL += toBase64(payload, payload_len, BASE64_URLSAFE | BASE64_NOPADDING);
+
 
   Serial.println(preparedURL);
   char Buf[200];
